@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Hotel Booking</title>
+</head>
+<body>
+  <h1>Reserva tu habitación</h1>
+
+  <form id="bookingForm">
+    <label>Nombre: <input type="text" name="name" required></label><br>
+    <label>Email: <input type="email" name="email" required></label><br>
+    <label>Habitación:
+      <select name="room" id="roomSelect" required></select>
+    </label><br>
+    <label>Check-In: <input type="date" name="checkIn" required></label><br>
+    <label>Check-Out: <input type="date" name="checkOut" required></label><br>
+    <label>Huéspedes: <input type="number" name="guests" min="1" required></label><br>
+    <button type="submit">Reservar</button>
+  </form>
+
+  <div id="result"></div>
+
+  <script>
+    const backend = "http://localhost:3000";
+
+    // Cargar habitaciones al combobox
+    async function loadRooms() {
+      const res = await fetch(`${backend}/api/rooms`);
+      const rooms = await res.json();
+      const select = document.getElementById("roomSelect");
+      select.innerHTML = "";
+      rooms.forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r.name;
+        opt.textContent = `${r.name} - ${r.price} COP - Máx ${r.capacity} pers.`;
+        opt.dataset.price = r.price;
+        select.appendChild(opt);
+      });
+    }
+
+    loadRooms();
+
+    // Manejar reserva
+    document.getElementById("bookingForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = new FormData(e.target);
+      const room = document.getElementById("roomSelect");
+      const selected = room.options[room.selectedIndex];
+
+      const bookingData = {
+        name: form.get("name"),
+        email: form.get("email"),
+        room: form.get("room"),
+        checkIn: form.get("checkIn"),
+        checkOut: form.get("checkOut"),
+        guests: parseInt(form.get("guests")),
+        amount: parseInt(selected.dataset.price)
+      };
+
+      const res = await fetch(`${backend}/api/create-booking`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bookingData)
+      });
+
+      const result = await res.json();
+      const div = document.getElementById("result");
+      div.innerHTML = "";
+
+      if (result.ok && result.checkout_url) {
+        const p = document.createElement("p");
+        p.textContent = `Reserva creada con referencia: ${result.booking.reference}`;
+
+        const payLink = document.createElement("a");
+        payLink.href = result.checkout_url;
+        payLink.target = "_blank";
+        payLink.innerText = "Pagar con Wompi";
+
+        div.appendChild(p);
+        div.appendChild(payLink);
+      } else {
+        div.innerHTML = `<p style="color:red;">Error creando reserva</p>`;
+        console.error(result);
+      }
+    });
+  </script>
+</body>
+</html>

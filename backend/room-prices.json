@@ -1,0 +1,38 @@
+{
+  "doble": {
+    "name": "Doble",
+    "price_per_night": 110000,
+    "capacity": 2
+  },
+  "cuadruple": {
+    "name": "Cuádruple",
+    "price_per_night": 160000,
+    "capacity": 4
+  },
+  "triple": {
+    "name": "Triple",
+    "price_per_night": 120000,
+    "capacity": 3
+  },
+  "matrimonial_rio": {
+    "name": "Matrimonial con vista al río",
+    "price_per_night": 140000,
+    "capacity": 2
+  },
+  "cama_dormitorio": {
+    "name": "Cama en Dormitorio",
+    "price_per_night": 45000,
+    "capacity": 1
+  },
+  "matrimonial": {
+    "name": "Matrimonial",
+    "price_per_night": 120000,
+    "capacity": 2
+  },
+  "sencilla": {
+    "name": "Sencilla Privada",
+    "price_per_night": 70000,
+    "capacity": 1
+  }
+}
+ 

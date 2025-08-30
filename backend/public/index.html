@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Hotel Paradise - Reservas</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Hotel Paradise - Reservas</h1>
+
+    <form id="booking-form">
+      <h2>Datos de la reserva</h2>
+      <input type="text" name="name" placeholder="Nombre completo" required>
+      <input type="email" name="email" placeholder="Correo electrónico" required>
+      <input type="date" name="check_in" required>
+      <input type="date" name="check_out" required>
+      <input type="number" name="total_persons" placeholder="Total de personas" min="1" required>
+      <button type="submit">Continuar</button>
+    </form>
+
+    <div id="rooms-section" class="hidden">
+      <h2>Selecciona las habitaciones</h2>
+      <div id="rooms-container"></div>
+      <div id="summary">
+        <p>Total personas seleccionadas: <span id="selected-persons">0</span></p>
+        <p>Total a pagar: $<span id="total-amount">0</span></p>
+      </div>
+      <button id="pay-button">Reservar y Pagar</button>
+    </div>
+  </div>
+
+<script src="main.js"></script>
+</body>
+</html>
+

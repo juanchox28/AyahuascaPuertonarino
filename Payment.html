@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Pago con Bold</title>
+</head>
+<body>
+  <h2>Finalizar pago de tu reserva</h2>
+
+  <form method="POST" action="https://checkout-sandbox.bold.co">
+    <!-- API Key de sandbox -->
+    <input type="hidden" name="api_key" value="TU_API_KEY_DE_PRUEBAS" />
+
+    <!-- Estos campos se llenan dinámicamente -->
+    <input type="hidden" id="amount" name="amount" />
+    <input type="hidden" id="currency" name="currency" value="COP" />
+    <input type="hidden" id="reference" name="reference" />
+    <input type="hidden" id="redirect_url" name="redirect_url" value="http://localhost:8080/frontend/success.html" />
+
+    <button type="submit">💳 Pagar con Bold</button>
+  </form>
+
+  <script>
+    // Ejemplo: recibir datos de reserva desde URL
+    const params = new URLSearchParams(window.location.search);
+    document.getElementById("amount").value = params.get("amount");
+    document.getElementById("reference").value = params.get("reference");
+  </script>
+</body>
+</html>

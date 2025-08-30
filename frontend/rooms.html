@@ -1,0 +1,99 @@
+ 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestión de Habitaciones</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { color: #2c3e50; }
+    table { border-collapse: collapse; width: 60%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+    th { background: #f5f5f5; }
+    input[type="number"] { width: 100px; padding: 5px; }
+    button { padding: 6px 12px; cursor: pointer; }
+    .success { color: green; margin-top: 10px; }
+    .error { color: red; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>💰 Gestión de Precios de Habitaciones</h1>
+  <p>Aquí puedes consultar y actualizar los precios de cada tipo de habitación.</p>
+
+  <table id="roomsTable">
+    <thead>
+      <tr>
+        <th>Habitación</th>
+        <th>Precio actual (COP)</th>
+        <th>Nuevo precio</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody id="roomsBody"></tbody>
+  </table>
+
+  <div id="message"></div>
+
+  <script>
+    const API_URL = "http://localhost:3000";
+
+    // Cargar habitaciones
+    async function loadRooms() {
+      try {
+        const res = await fetch(`${API_URL}/api/rooms`);
+        const data = await res.json();
+
+        if (!data.ok) throw new Error("Error cargando habitaciones");
+
+        const tbody = document.getElementById("roomsBody");
+        tbody.innerHTML = "";
+
+        data.rooms.forEach(room => {
+          const row = document.createElement("tr");
+
+          row.innerHTML = `
+            <td>${room.name}</td>
+            <td>${room.price.toLocaleString("es-CO")}</td>
+            <td><input type="number" id="price-${room.name}" value="${room.price}" /></td>
+            <td><button onclick="updateRoom('${room.name}')">Actualizar</button></td>
+          `;
+
+          tbody.appendChild(row);
+        });
+      } catch (err) {
+        console.error(err);
+        document.getElementById("message").innerHTML = `<p class="error">❌ Error cargando habitaciones</p>`;
+      }
+    }
+
+    // Actualizar precio de una habitación
+    async function updateRoom(name) {
+      const newPrice = document.getElementById(`price-${name}`).value;
+
+      try {
+        const res = await fetch(`${API_URL}/api/update-room`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, price: parseInt(newPrice) })
+        });
+
+        const data = await res.json();
+
+        if (data.ok) {
+          document.getElementById("message").innerHTML = `<p class="success">✅ Precio de <b>${name}</b> actualizado a ${newPrice} COP</p>`;
+          loadRooms();
+        } else {
+          document.getElementById("message").innerHTML = `<p class="error">❌ ${data.error}</p>`;
+        }
+      } catch (err) {
+        console.error(err);
+        document.getElementById("message").innerHTML = `<p class="error">❌ Error actualizando habitación</p>`;
+      }
+    }
+
+    // Inicializar
+    loadRooms();
+  </script>
+</body>
+</html>
+ 

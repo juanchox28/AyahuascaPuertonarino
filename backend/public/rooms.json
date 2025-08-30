@@ -1,0 +1,9 @@
+export const rooms = [
+  { id: 1, type: "Cama en Dormitorio Compartido", price: 4500000, capacity: 1, image: "https://via.placeholder.com/80x60?text=Cama" },
+  { id: 2, type: "Sencilla Privada", price: 7000000, capacity: 1, image: "https://via.placeholder.com/80x60?text=Sencilla" },
+  { id: 3, type: "Matrimonial", price: 12000000, capacity: 2, image: "https://via.placeholder.com/80x60?text=Matrimonial" },
+  { id: 4, type: "Doble cama", price: 12000000, capacity: 2, image: "https://via.placeholder.com/80x60?text=Doble" },
+  { id: 5, type: "Matrimonial con hamaca", price: 12000000, capacity: 2, image: "https://via.placeholder.com/80x60?text=Hamaca" },
+  { id: 6, type: "Familiar Triple", price: 12000000, capacity: 3, image: "https://via.placeholder.com/80x60?text=Triple" },
+  { id: 7, type: "Familiar Cuádruple", price: 12000000, capacity: 4, image: "https://via.placeholder.com/80x60?text=Cuadruple" }
+];

@@ -1,0 +1,15 @@
+{
+  "name": "Paraiso Ayahuasca",
+  "version": "1.0.0",
+  "description": "Sistema completo de reservas de hotel con integración de pagos Bold",
+  "scripts": {
+    "install-all": "cd backend && npm install",
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev",
+    "serve-frontend": "cd frontend && python -m http.server 8080",
+    "setup": "./setup.sh"
+  },
+  "keywords": ["hotel", "booking", "reservas", "bold", "payments"],
+  "author": "Tu Nombre",
+  "license": "MIT"
+}

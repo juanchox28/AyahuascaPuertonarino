@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <script src="a_data/html-to-image.min.js" integrity="sha512-iZ2ORl595Wx6miw+GuadDet4WQbdSWS3JLMoNfY8cRGoEFy6oT3G9IbcrBeL6AfkgpA51ETt/faX6yLV+/gFJg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+      (function() {
+        const originalConsole = window.console;
+        window.console = {
+          log: (...args) => {
+            originalConsole.log(...args);
+            window.parent.postMessage({ type: 'console', message: args.join(' ') }, '*');
+          },
+          error: (...args) => {
+            originalConsole.error(...args);
+            window.parent.postMessage({ type: 'console', message: 'Error: ' + args.join(' ') }, '*');
+          },
+          warn: (...args) => {
+            originalConsole.warn(...args);
+            window.parent.postMessage({ type: 'console', message: 'Warning: ' + args.join(' ') }, '*');
+          }
+        };
+
+        let requestId = 0;
+        let callbacksMap = new Map();
+        let streamControllers = new Map();
+        
+        window.claude = {
+          complete: (prompt) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'claudeComplete', id, prompt }, '*');
+            });
+          }
+        };
+
+        window.storage = {
+          get: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageGet', id, key, shared }, '*');
+            });
+          },
+          set: (key, value, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageSet', id, key, value, shared }, '*');
+            });
+          },
+          delete: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageDelete', id, key, shared }, '*');
+            });
+          },
+          list: (prefix, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageList', id, prefix, shared }, '*');
+            });
+          }
+        };
+
+        let pendingBlobs = new Map();
+        URL.createObjectURL = (blob) => {
+          // Store the blob and create an ID and URL for it
+          const blobId = `blob-${Date.now()}-${Math.random()}`;
+          pendingBlobs.set(blobId, blob);
+          return `blob-request://${blobId}`;
+        };
+
+        URL.revokeObjectURL = (url) => {
+          // Remove the blob from our store
+          const blobId = url.replace("blob-request://", "");
+          pendingBlobs.delete(blobId);
+        };
+
+        const getBlobFromURL = (url) => {
+          const blobId = url.replace("blob-request://", "");
+          return pendingBlobs.get(blobId);
+        };
+
+        // Override global fetch with streaming support
+        window.fetch = (url, init = {}) => {
+          return new Promise((resolve, reject) => {
+            const id = requestId++;
+            const channelId = `fetch-${id}-${Date.now()}`;
+            
+            callbacksMap.set(id, { 
+              resolve: (response) => {
+                // Create a ReadableStream for the response body
+                const stream = new ReadableStream({
+                  start(controller) {
+                    streamControllers.set(channelId, controller);
+                  },
+                  cancel() {
+                    streamControllers.delete(channelId);
+                  }
+                });
+                
+                // Create and return the Response with the stream
+                resolve(new Response(stream, {
+                  status: response.status,
+                  statusText: response.statusText,
+                  headers: response.headers
+                }));
+              },
+              reject,
+              channelId
+            });
+            
+            window.parent.postMessage({
+              type: 'proxyFetch',
+              id,
+              url,
+              init,
+              channelId
+            }, '*');
+          });
+        };
+
+        window.addEventListener('message', async (event) => {
+          if (event.data.type === 'takeScreenshot') {
+            const rootElement = document.getElementById('artifacts-component-root-html');
+            if (!rootElement) {
+              window.parent.postMessage({
+                type: 'screenshotError',
+                error: new Error('Root element not found'),
+              }, '*');
+            }
+            const screenshot = await htmlToImage.toPng(rootElement, {
+              imagePlaceholder:
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjePDgwX8ACOQDoNsk0PMAAAAASUVORK5CYII=",
+            });
+            window.parent.postMessage({
+              type: 'screenshotData',
+              data: screenshot,
+            }, '*');
+          } else if (event.data.type === 'claudeComplete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.completion);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'proxyFetchResponse') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+              callbacksMap.delete(event.data.id);
+            } else {
+              // Initial response with headers, status, etc.
+              callback.resolve({
+                status: event.data.status,
+                statusText: event.data.statusText,
+                headers: event.data.headers
+              });
+              // Don't delete the callback yet if streaming
+              if (!event.data.body) {
+                callbacksMap.delete(event.data.id);
+              }
+            }
+          } else if (event.data.type === 'proxyFetchStream') {
+            // Handle streaming data chunks
+            const controller = streamControllers.get(event.data.channelId);
+            if (controller) {
+              if (event.data.error) {
+                controller.error(new Error(event.data.error));
+                streamControllers.delete(event.data.channelId);
+              } else if (event.data.done) {
+                controller.close();
+                streamControllers.delete(event.data.channelId);
+                // Clean up the callback
+                const callback = Array.from(callbacksMap.entries()).find(
+                  ([_, value]) => value.channelId === event.data.channelId
+                );
+                if (callback) {
+                  callbacksMap.delete(callback[0]);
+                }
+              } else if (event.data.chunk) {
+                controller.enqueue(new Uint8Array(event.data.chunk));
+              }
+            }
+          } else if (event.data.type === 'storageGet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageSet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageDelete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageList') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          }
+        });
+
+        window.addEventListener('click', (event) => {
+          const isEl = event.target instanceof HTMLElement;
+          if (!isEl) return;
+    
+          // find ancestor links
+          const linkEl = event.target.closest("a");
+          if (!linkEl || !linkEl.href) return;
+    
+          event.preventDefault();
+          event.stopImmediatePropagation();
+    
+          if (linkEl.href.startsWith("blob-request:")) {
+            const blob = getBlobFromURL(linkEl.href);
+            if (!blob) return;
+            void blob.arrayBuffer().then((data) => {
+              window.parent.postMessage({
+                type: "downloadFile",
+                filename: linkEl.download,
+                data,
+                mimeType: blob.type || "application/octet-stream",
+              });
+            });
+          } else if (linkEl.href.startsWith("data:")) {
+            const [header, base64Data] = linkEl.href.split(",");
+            const mimeMatch = header.match(/data:([^;]+)/);
+            const mimeType = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+            const binaryString = atob(base64Data);
+            const data = Uint8Array.from(binaryString, (c) =>
+              c.charCodeAt(0),
+            ).buffer;
+            window.parent.postMessage({
+              type: "downloadFile",
+              filename: linkEl.download,
+              data,
+              mimeType,
+            });
+          } else {
+            let linkUrl;
+            try {
+              linkUrl = new URL(linkEl.href);
+            } catch (error) {
+              return;
+            }
+    
+            if (linkUrl.hostname === window.location.hostname) return;
+      
+            window.parent.postMessage({
+              type: 'openExternal',
+              href: linkEl.href,
+            }, '*');
+          }
+      });
+
+        const originalOpen = window.open;
+        window.open = function (url) {
+          window.parent.postMessage({
+            type: "openExternal",
+            href: url,
+          }, "*");
+        };
+
+        window.addEventListener('error', (event) => {
+          window.parent.postMessage({ type: 'console', message: 'Uncaught Error: ' + event.message }, '*');
+        });
+      })();
+    </script>
+  
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Paradise - Reservas</title>
+    <script crossorigin="" src="a_data/react.development.js"></script>
+    <script crossorigin="" src="a_data/react-dom.development.js"></script>
+    <script src="a_data/babel.min.js"></script>
+</head>
+<body id="artifacts-component-root-html">
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState } = React;
+
+        const HotelBookingApp = () => {
+          const [formData, setFormData] = useState({
+            name: '',
+            email: '',
+            checkIn: '',
+            checkOut: '',
+            guests: 1,
+            room: 'standard'
+          });
+          const [isLoading, setIsLoading] = useState(false);
+          const [error, setError] = useState('');
+          const [success, setSuccess] = useState('');
+
+          const roomPrices = {
+            standard: 150000,
+            deluxe: 250000,
+            suite: 400000
+          };
+
+          const handleInputChange = (e) => {
+            const { name, value } = e.target;
+            setFormData(prev => ({
+              ...prev,
+              [name]: value
+            }));
+            // Clear messages when user starts typing
+            if (error) setError('');
+            if (success) setSuccess('');
+          };
+
+          const calculateNights = () => {
+            if (!formData.checkIn || !formData.checkOut) return 0;
+            const checkIn = new Date(formData.checkIn);
+            const checkOut = new Date(formData.checkOut);
+            const diffTime = checkOut - checkIn;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays > 0 ? diffDays : 0;
+          };
+
+          const calculateTotal = () => {
+            const nights = calculateNights();
+            return nights * roomPrices[formData.room];
+          };
+
+          const handleSubmit = async (e) => {
+            e.preventDefault();
+            setIsLoading(true);
+            setError('');
+            setSuccess('');
+
+            // Basic validation
+            if (!formData.name || !formData.email || !formData.checkIn || !formData.checkOut) {
+              setError('Por favor completa todos los campos obligatorios');
+              setIsLoading(false);
+              return;
+            }
+
+            if (new Date(formData.checkIn) >= new Date(formData.checkOut)) {
+              setError('La fecha de salida debe ser posterior a la fecha de entrada');
+              setIsLoading(false);
+              return;
+            }
+
+            const total = calculateTotal();
+            if (total <= 0) {
+              setError('Error en el cálculo del precio');
+              setIsLoading(false);
+              return;
+            }
+
+            try {
+              // Call your backend server (assuming it's running on port 3000)
+              const response = await fetch('http://localhost:3000/api/create-booking', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  name: formData.name,
+                  email: formData.email,
+                  amount: total,
+                  checkIn: formData.checkIn,
+                  checkOut: formData.checkOut,
+                  guests: formData.guests,
+                  room: formData.room
+                }),
+              });
+
+              const data = await response.json();
+
+              if (response.ok && data.ok) {
+                setSuccess(`¡Reserva creada! Referencia: ${data.reference}`);
+                // Redirect to Bold checkout
+                if (data.checkout_url) {
+                  window.open(data.checkout_url, '_blank');
+                }
+              } else {
+                setError(data.error || 'Error al crear la reserva');
+              }
+            } catch (err) {
+              setError('Error de conexión. Por favor intenta nuevamente.');
+              console.error('Error:', err);
+            } finally {
+              setIsLoading(false);
+            }
+          };
+
+          const formatPrice = (price) => {
+            return new Intl.NumberFormat('es-CO', {
+              style: 'currency',
+              currency: 'COP',
+              minimumFractionDigits: 0
+            }).format(price);
+          };
+
+          const nights = calculateNights();
+          const total = calculateTotal();
+
+          // Simple icons using Unicode symbols (no external dependencies needed)
+          const icons = {
+            user: '👤',
+            email: '📧',
+            calendar: '📅',
+            location: '📍',
+            star: '⭐',
+            wifi: '📶',
+            car: '🚗',
+            coffee: '☕',
+            card: '💳'
+          };
+
+          return React.createElement('div', {
+            style: {
+              minHeight: '100vh',
+              background: 'linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%)',
+              fontFamily: 'Arial, sans-serif'
+            }
+          }, 
+            React.createElement('div', {
+              style: { maxWidth: '1200px', margin: '0 auto', padding: '32px 16px' }
+            },
+              // Header
+              React.createElement('div', {
+                style: { textAlign: 'center', marginBottom: '32px' }
+              },
+                React.createElement('h1', {
+                  style: { fontSize: '36px', fontWeight: 'bold', color: '#1f2937', margin: '0 0 8px 0' }
+                }, 'Hotel Paradise'),
+                React.createElement('p', {
+                  style: { color: '#6b7280', margin: 0 }
+                }, 'Tu experiencia perfecta te está esperando')
+              ),
+
+              React.createElement('div', {
+                style: { 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', 
+                  gap: '32px' 
+                }
+              },
+                // Hotel Info Card
+                React.createElement('div', {
+                  style: {
+                    backgroundColor: 'white',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    overflow: 'hidden'
+                  }
+                },
+                  React.createElement('div', {
+                    style: {
+                      height: '256px',
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      textAlign: 'center'
+                    }
+                  },
+                    React.createElement('div', null,
+                      React.createElement('div', {
+                        style: { fontSize: '48px', marginBottom: '16px' }
+                      }, icons.location),
+                      React.createElement('h3', {
+                        style: { fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0' }
+                      }, 'Ubicación Premium'),
+                      React.createElement('p', {
+                        style: { margin: 0 }
+                      }, 'Centro de la ciudad')
+                    )
+                  ),
+                  
+                  React.createElement('div', {
+                    style: { padding: '24px' }
+                  },
+                    React.createElement('div', {
+                      style: { display: 'flex', alignItems: 'center', marginBottom: '16px' }
+                    },
+                      React.createElement('span', {
+                        style: { color: '#fbbf24' }
+                      }, `${icons.star}${icons.star}${icons.star}${icons.star}${icons.star}`),
+                      React.createElement('span', {
+                        style: { marginLeft: '8px', color: '#6b7280' }
+                      }, '5.0 (124 reseñas)')
+                    ),
+
+                    React.createElement('h4', {
+                      style: { fontWeight: '600', marginBottom: '12px' }
+                    }, 'Servicios incluidos:'),
+
+                    React.createElement('div', {
+                      style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }
+                    },
+                      React.createElement('div', {
+                        style: { display: 'flex', alignItems: 'center', color: '#6b7280' }
+                      },
+                        React.createElement('span', {
+                          style: { marginRight: '8px' }
+                        }, icons.wifi),
+                        React.createElement('span', null, 'WiFi gratis')
+                      ),
+                      React.createElement('div', {
+                        style: { display: 'flex', alignItems: 'center', color: '#6b7280' }
+                      },
+                        React.createElement('span', {
+                          style: { marginRight: '8px' }
+                        }, icons.car),
+                        React.createElement('span', null, 'Estacionamiento')
+                      ),
+                      React.createElement('div', {
+                        style: { display: 'flex', alignItems: 'center', color: '#6b7280' }
+                      },
+                        React.createElement('span', {
+                          style: { marginRight: '8px' }
+                        }, icons.coffee),
+                        React.createElement('span', null, 'Desayuno')
+                      ),
+                      React.createElement('div', {
+                        style: { display: 'flex', alignItems: 'center', color: '#6b7280' }
+                      },
+                        React.createElement('span', {
+                          style: { marginRight: '8px' }
+                        }, icons.card),
+                        React.createElement('span', null, 'Pago seguro')
+                      )
+                    ),
+
+                    React.createElement('div', {
+                      style: {
+                        marginTop: '24px',
+                        padding: '16px',
+                        backgroundColor: '#f9fafb',
+                        borderRadius: '8px'
+                      }
+                    },
+                      React.createElement('h4', {
+                        style: { fontWeight: '600', marginBottom: '8px' }
+                      }, 'Tipos de habitación:'),
+                      React.createElement('div', {
+                        style: { fontSize: '14px' }
+                      },
+                        React.createElement('div', {
+                          style: { display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }
+                        },
+                          React.createElement('span', null, 'Estándar'),
+                          React.createElement('span', {
+                            style: { fontWeight: '600' }
+                          }, `${formatPrice(roomPrices.standard)}/noche`)
+                        ),
+                        React.createElement('div', {
+                          style: { display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }
+                        },
+                          React.createElement('span', null, 'Deluxe'),
+                          React.createElement('span', {
+                            style: { fontWeight: '600' }
+                          }, `${formatPrice(roomPrices.deluxe)}/noche`)
+                        ),
+                        React.createElement('div', {
+                          style: { display: 'flex', justifyContent: 'space-between' }
+                        },
+                          React.createElement('span', null, 'Suite'),
+                          React.createElement('span', {
+                            style: { fontWeight: '600' }
+                          }, `${formatPrice(roomPrices.suite)}/noche`)
+                        )
+                      )
+                    )
+                  )
+                ),
+
+                // Booking Form Card
+                React.createElement('div', {
+                  style: {
+                    backgroundColor: 'white',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    padding: '24px'
+                  }
+                },
+                  React.createElement('h2', {
+                    style: { fontSize: '24px', fontWeight: 'bold', color: '#1f2937', marginBottom: '24px' }
+                  }, 'Haz tu reserva'),
+                  
+                  React.createElement('div', {
+                    style: { display: 'flex', flexDirection: 'column', gap: '16px' }
+                  },
+                    // Personal Info Row
+                    React.createElement('div', {
+                      style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }
+                    },
+                      React.createElement('div', null,
+                        React.createElement('label', {
+                          style: { display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }
+                        }, `${icons.user} Nombre completo *`),
+                        React.createElement('input', {
+                          type: 'text',
+                          name: 'name',
+                          value: formData.name,
+                          onChange: handleInputChange,
+                          style: {
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            boxSizing: 'border-box'
+                          },
+                          placeholder: 'Tu nombre completo'
+                        })
+                      ),
+                      React.createElement('div', null,
+                        React.createElement('label', {
+                          style: { display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }
+                        }, `${icons.email} Email *`),
+                        React.createElement('input', {
+                          type: 'email',
+                          name: 'email',
+                          value: formData.email,
+                          onChange: handleInputChange,
+                          style: {
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            boxSizing: 'border-box'
+                          },
+                          placeholder: 'tu@email.com'
+                        })
+                      )
+                    ),
+
+                    // Dates Row
+                    React.createElement('div', {
+                      style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }
+                    },
+                      React.createElement('div', null,
+                        React.createElement('label', {
+                          style: { display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }
+                        }, `${icons.calendar} Fecha de entrada *`),
+                        React.createElement('input', {
+                          type: 'date',
+                          name: 'checkIn',
+                          value: formData.checkIn,
+                          onChange: handleInputChange,
+                          min: new Date().toISOString().split('T')[0],
+                          style: {
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            boxSizing: 'border-box'
+                          }
+                        })
+                      ),
+                      React.createElement('div', null,
+                        React.createElement('label', {
+                          style: { display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }
+                        }, `${icons.calendar} Fecha de salida *`),
+                        React.createElement('input', {
+                          type: 'date',
+                          name: 'checkOut',
+                          value: formData.checkOut,
+                          onChange: handleInputChange,
+                          min: formData.checkIn || new Date().toISOString().split('T')[0],
+                          style: {
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            boxSizing: 'border-box'
+                          }
+                        })
+                      )
+                    ),
+
+                    // Room and Guests Row
+                    React.createElement('div', {
+                      style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }
+                    },
+                      React.createElement('div', null,
+                        React.createElement('label', {
+                          style: { display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }
+                        }, 'Tipo de habitación'),
+                        React.createElement('select', {
+                          name: 'room',
+                          value: formData.room,
+                          onChange: handleInputChange,
+                          style: {
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            boxSizing: 'border-box'
+                          }
+                        },
+                          React.createElement('option', { value: 'standard' }, `Estándar - ${formatPrice(roomPrices.standard)}`),
+                          React.createElement('option', { value: 'deluxe' }, `Deluxe - ${formatPrice(roomPrices.deluxe)}`),
+                          React.createElement('option', { value: 'suite' }, `Suite - ${formatPrice(roomPrices.suite)}`)
+                        )
+                      ),
+                      React.createElement('div', null,
+                        React.createElement('label', {
+                          style: { display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }
+                        }, 'Huéspedes'),
+                        React.createElement('select', {
+                          name: 'guests',
+                          value: formData.guests,
+                          onChange: handleInputChange,
+                          style: {
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            boxSizing: 'border-box'
+                          }
+                        },
+                          [1, 2, 3, 4].map(num => 
+                            React.createElement('option', { key: num, value: num }, `${num} huésped${num > 1 ? 'es' : ''}`)
+                          )
+                        )
+                      )
+                    ),
+
+                    // Price Summary
+                    nights > 0 && React.createElement('div', {
+                      style: {
+                        backgroundColor: '#eff6ff',
+                        padding: '16px',
+                        borderRadius: '8px'
+                      }
+                    },
+                      React.createElement('h4', {
+                        style: { fontWeight: '600', color: '#1f2937', marginBottom: '8px' }
+                      }, 'Resumen de precios:'),
+                      React.createElement('div', {
+                        style: { fontSize: '14px' }
+                      },
+                        React.createElement('div', {
+                          style: { display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }
+                        },
+                          React.createElement('span', null, `${formatPrice(roomPrices[formData.room])} x ${nights} noche${nights > 1 ? 's' : ''}`),
+                          React.createElement('span', null, formatPrice(total))
+                        ),
+                        React.createElement('div', {
+                          style: {
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            fontWeight: 'bold',
+                            fontSize: '18px',
+                            paddingTop: '8px',
+                            borderTop: '1px solid #e5e7eb'
+                          }
+                        },
+                          React.createElement('span', null, 'Total:'),
+                          React.createElement('span', {
+                            style: { color: '#2563eb' }
+                          }, formatPrice(total))
+                        )
+                      )
+                    ),
+
+                    // Error Message
+                    error && React.createElement('div', {
+                      style: {
+                        backgroundColor: '#fef2f2',
+                        border: '1px solid #fecaca',
+                        color: '#dc2626',
+                        padding: '12px 16px',
+                        borderRadius: '8px'
+                      }
+                    }, error),
+
+                    // Success Message
+                    success && React.createElement('div', {
+                      style: {
+                        backgroundColor: '#f0fdf4',
+                        border: '1px solid #bbf7d0',
+                        color: '#16a34a',
+                        padding: '12px 16px',
+                        borderRadius: '8px'
+                      }
+                    }, success),
+
+                    // Submit Button
+                    React.createElement('button', {
+                      onClick: handleSubmit,
+                      disabled: isLoading || nights <= 0,
+                      style: {
+                        width: '100%',
+                        backgroundColor: isLoading || nights <= 0 ? '#9ca3af' : '#2563eb',
+                        color: 'white',
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                        fontSize: '16px',
+                        border: 'none',
+                        cursor: isLoading || nights <= 0 ? 'not-allowed' : 'pointer',
+                        transition: 'background-color 0.2s'
+                      },
+                      onMouseEnter: (e) => {
+                        if (!isLoading && nights > 0) {
+                          e.target.style.backgroundColor = '#1d4ed8';
+                        }
+                      },
+                      onMouseLeave: (e) => {
+                        if (!isLoading && nights > 0) {
+                          e.target.style.backgroundColor = '#2563eb';
+                        }
+                      }
+                    }, isLoading ? 'Procesando...' : `Reservar por ${formatPrice(total)}`),
+
+                    React.createElement('p', {
+                      style: { fontSize: '12px', color: '#6b7280', textAlign: 'center', marginTop: '16px', margin: '16px 0 0 0' }
+                    }, 'Al hacer clic en "Reservar", serás redirigido a Bold para completar el pago de forma segura.')
+                  )
+                )
+              )
+            )
+          );
+        };
+
+        ReactDOM.render(React.createElement(HotelBookingApp), document.getElementById('root'));
+    </script>
+
+</body></html>

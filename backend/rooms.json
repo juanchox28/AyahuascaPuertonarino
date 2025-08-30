@@ -1,0 +1,9 @@
+[
+  { "id": 1, "type": "Cama en Dormitorio Compartido", "price": 45000, "capacity": 1, "image": "https://via.placeholder.com/80x60?text=Doble" },
+  { "id": 2, "type": "Sencilla Privada", "price": 70000, "capacity": 1, "image": "https://via.placeholder.com/80x60?text=Matrimonial" },
+  { "id": 3, "type": "Matrimonial", "price": 120000, "capacity": 2, "image": "https://via.placeholder.com/80x60?text=Suite" },
+  { "id": 4, "type": "Doble cama", "price": 120000, "capacity": 2, "image": "https://via.placeholder.com/80x60?text=Suite" },
+  { "id": 5, "type": "Matrimonial con hamaca", "price": 120000, "capacity": 3, "image": "https://via.placeholder.com/80x60?text=Suite" },
+  { "id": 6, "type": "Familiar Triple", "price": 120000, "capacity": 3, "image": "https://via.placeholder.com/80x60?text=Suite" },
+  { "id": 7, "type": "Familiar Cuádruple", "price": 120000, "capacity": 4, "image": "https://via.placeholder.com/80x60?text=Suite" }
+]

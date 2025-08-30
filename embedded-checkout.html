@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Paradise - Checkout Embebido</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .checkout-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        .booking-summary {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .bold-checkout-placeholder {
+            background: #fff;
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .loading {
+            color: #666;
+            font-size: 18px;
+        }
+    </style>
+    <!-- Script de Bold Embedded Checkout -->
+    <script src="https://checkout.bold.co/library/boldPaymentButton.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 Hotel Paradise - Finalizar Reserva</h1>
+            <p>Complete su pago de forma segura sin salir de nuestra página</p>
+        </div>
+
+        <div class="checkout-container">
+            <div class="booking-summary">
+                <h3>📋 Resumen de su reserva</h3>
+                <div id="booking-details">
+                    <p>Cargando información de su reserva...</p>
+                </div>
+            </div>
+
+            <div class="bold-checkout-placeholder">
+                <div class="loading" id="checkout-loading">
+                    ⏳ Cargando checkout seguro...
+                </div>
+                <!-- Aquí se insertará el checkout de Bold -->
+                <div id="bold-checkout-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Función para inicializar el Embedded Checkout
+        async function initializeEmbeddedCheckout() {
+            try {
+                console.log("🔄 Inicializando Embedded Checkout...");
+                
+                // Obtener datos de la reserva (simulado)
+                const bookingData = {
+                    name: "Juan Pérez",
+                    email: "cliente@email.com",
+                    amount: 150000,
+                    checkIn: "2025-08-30",
+                    checkOut: "2025-08-31",
+                    guests: 2,
+                    room: "standard"
+                };
+
+                // Crear sesión embedded en el backend
+                const response = await fetch('http://localhost:3000/api/create-embedded-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+
+                const sessionData = await response.json();
+
+                if (sessionData.ok) {
+                    // Mostrar resumen de la reserva
+                    document.getElementById('booking-details').innerHTML = `
+                        <p><strong>Habitación:</strong> ${sessionData.metadata.roomType}</p>
+                        <p><strong>Check-in:</strong> ${sessionData.metadata.checkIn}</p>
+                        <p><strong>Check-out:</strong> ${sessionData.metadata.checkOut}</p>
+                        <p><strong>Huéspedes:</strong> ${sessionData.metadata.guests}</p>
+                        <p><strong>Total:</strong> $${sessionData.amount.toLocaleString()} COP</p>
+                    `;
+
+                    // Inicializar el botón de pago embedded
+                    initializeBoldCheckout(sessionData);
+                } else {
+                    throw new Error(sessionData.error);
+                }
+
+            } catch (error) {
+                console.error('❌ Error inicializando checkout:', error);
+                document.getElementById('checkout-loading').innerHTML = 
+                    '❌ Error al cargar el checkout. Por favor, recarga la página.';
+            }
+        }
+
+        // Función para inicializar el checkout de Bold
+        function initializeBoldCheckout(sessionData) {
+            // Ocultar loading
+            document.getElementById('checkout-loading').style.display = 'none';
+            
+            // Crear elemento script para Bold Embedded Checkout
+            const script = document.createElement('script');
+            script.innerHTML = `
+                // Configuración para Embedded Checkout
+                const boldConfig = {
+                    "data-bold-button": "embedded",
+                    "data-api-key": "${sessionData.api_key}",
+                    "data-order-id": "${sessionData.order_id}",
+                    "data-amount": "${sessionData.amount}",
+                    "data-currency": "${sessionData.currency}",
+                    "data-description": "${sessionData.description}",
+                    "data-customer-email": "${sessionData.customer_email}",
+                    "data-customer-name": "${sessionData.customer_name}",
+                    "data-redirection-url": "${sessionData.redirect_url}",
+                    "data-integrity-signature": "${sessionData.integrity_signature || ''}"
+                };
+
+                // Aplicar configuración
+                Object.keys(boldConfig).forEach(key => {
+                    script.setAttribute(key, boldConfig[key]);
+                });
+            `;
+
+            // Añadir el script al contenedor
+            document.getElementById('bold-checkout-container').appendChild(script);
+            
+            console.log("✅ Checkout embedded inicializado");
+        }
+
+        // Inicializar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', initializeEmbeddedCheckout);
+
+        // Manejar eventos de Bold
+        window.addEventListener('boldCheckoutLoaded', function() {
+            console.log('✅ Bold Checkout cargado correctamente');
+        });
+
+        window.addEventListener('boldCheckoutLoadFailed', function() {
+            console.error('❌ Error cargando Bold Checkout');
+            document.getElementById('checkout-loading').innerHTML = 
+                '❌ Error al cargar el sistema de pago. Por favor, intenta nuevamente.';
+        });
+    </script>
+</body>
+</html> 

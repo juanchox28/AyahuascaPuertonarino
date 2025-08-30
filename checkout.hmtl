@@ -1,0 +1,371 @@
+ 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Hotel Paradise</title>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #28a745;
+            --danger: #dc3545;
+            --light: #f8f9fa;
+            --dark: #343a40;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .checkout-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .checkout-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .checkout-header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .checkout-header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .checkout-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .checkout-body {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .booking-summary {
+            background: var(--light);
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .booking-summary h3 {
+            color: var(--dark);
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+        }
+        
+        .summary-item {
+            display: flex;
+            justify-content: between;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .summary-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .summary-label {
+            font-weight: 600;
+            color: var(--dark);
+            flex: 1;
+        }
+        
+        .summary-value {
+            color: #666;
+            flex: 1;
+            text-align: right;
+        }
+        
+        .total-price {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--success);
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px dashed #ddd;
+        }
+        
+        .checkout-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .checkout-section h3 {
+            color: var(--dark);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .checkout-section h3 i {
+            color: var(--primary);
+        }
+        
+        #bold-embedded-checkout {
+            min-height: 500px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #ffe6e6;
+            color: var(--danger);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid var(--danger);
+            margin: 20px 0;
+        }
+        
+        .success-message {
+            background: #e6ffe6;
+            color: var(--success);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid var(--success);
+            margin: 20px 0;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+            border-top: 1px solid #eee;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="checkout-container">
+        <div class="checkout-header">
+            <h1>🏨 Hotel Paradise</h1>
+            <p>Complete su reserva de manera segura</p>
+        </div>
+        
+        <div class="checkout-body">
+            <!-- Resumen de la reserva -->
+            <div class="booking-summary">
+                <h3>📋 Resumen de su reserva</h3>
+                
+                <div class="summary-item">
+                    <span class="summary-label">Habitación:</span>
+                    <span class="summary-value" id="summary-room">Suite Premium</span>
+                </div>
+                
+                <div class="summary-item">
+                    <span class="summary-label">Check-in:</span>
+                    <span class="summary-value" id="summary-checkin">28/08/2025</span>
+                </div>
+                
+                <div class="summary-item">
+                    <span class="summary-label">Check-out:</span>
+                    <span class="summary-value" id="summary-checkout">30/08/2025</span>
+                </div>
+                
+                <div class="summary-item">
+                    <span class="summary-label">Huéspedes:</span>
+                    <span class="summary-value" id="summary-guests">2 adultos</span>
+                </div>
+                
+                <div class="summary-item">
+                    <span class="summary-label">Noches:</span>
+                    <span class="summary-value" id="summary-nights">2 noches</span>
+                </div>
+                
+                <div class="summary-item">
+                    <span class="summary-label">Precio por noche:</span>
+                    <span class="summary-value" id="summary-price">$400,000</span>
+                </div>
+                
+                <div class="total-price" id="summary-total">$800,000 COP</div>
+                
+                <div class="action-buttons">
+                    <a href="/" class="btn btn-secondary">← Modificar reserva</a>
+                    <button onclick="window.print()" class="btn btn-secondary">🖨️ Imprimir</button>
+                </div>
+            </div>
+            
+            <!-- Sección de pago -->
+            <div class="checkout-section">
+                <h3>💳 Pago seguro con Bold</h3>
+                <p>Complete el proceso de pago utilizando nuestro sistema seguro. Aceptamos todas las tarjetas y métodos de pago.</p>
+                
+                <div id="checkout-status">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>Inicializando checkout seguro...</p>
+                    </div>
+                </div>
+                
+                <div id="bold-embedded-checkout">
+                    <!-- Aquí se cargará el Embedded Checkout de Bold -->
+                </div>
+                
+                <div class="security-notice">
+                    <p>🔒 Su pago está protegido con encriptación SSL de 256-bit. No almacenamos la información de su tarjeta.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2025 Hotel Paradise. Todos los derechos reservados.</p>
+            <p>¿Necesita ayuda? Contacte a soporte@hotelparadise.com</p>
+        </div>
+    </div>
+
+    <!-- Script de Bold Embedded Checkout -->
+    <script src="/frontend/embedded-checkout.js"></script>
+    
+    <script>
+        // Datos de ejemplo de la reserva (en producción vendrían del backend)
+        const bookingData = {
+            name: "Juan Pérez",
+            email: "juan@example.com",
+            amount: 800000,
+            checkIn: "2025-08-28",
+            checkOut: "2025-08-30",
+            guests: 2,
+            room: "suite",
+            nights: 2,
+            pricePerNight: 400000
+        };
+        
+        // Actualizar resumen en la UI
+        document.getElementById('summary-room').textContent = 'Suite Premium';
+        document.getElementById('summary-checkin').textContent = '28/08/2025';
+        document.getElementById('summary-checkout').textContent = '30/08/2025';
+        document.getElementById('summary-guests').textContent = '2 adultos';
+        document.getElementById('summary-nights').textContent = '2 noches';
+        document.getElementById('summary-price').textContent = '$400,000';
+        document.getElementById('summary-total').textContent = '$800,000 COP';
+        
+        // Inicializar checkout cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const statusDiv = document.getElementById('checkout-status');
+                
+                // Inicializar Embedded Checkout
+                await window.HotelParadiseCheckout.openCheckout(bookingData);
+                
+                // Ocultar mensaje de carga
+                statusDiv.innerHTML = '';
+                
+            } catch (error) {
+                console.error('Error inicializando checkout:', error);
+                document.getElementById('checkout-status').innerHTML = `
+                    <div class="error-message">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                    <div class="action-buttons">
+                        <button onclick="location.reload()" class="btn btn-primary">
+                            🔄 Reintentar
+                        </button>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
