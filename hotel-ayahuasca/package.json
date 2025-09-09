@@ -1,0 +1,13 @@
+{
+  "name": "hotel-ayahuasca-hugo",
+  "version": "1.0.0",
+  "description": "Hotel Ayahuasca website with Hugo and Ananke theme",
+  "scripts": {
+    "dev": "hugo server -D",
+    "build": "hugo --minify",
+    "serve": "hugo server"
+  },
+  "devDependencies": {
+    "hugo": "^0.0.3"
+  }
+}

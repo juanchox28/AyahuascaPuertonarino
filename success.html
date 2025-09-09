@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pago Exitoso - Hotel Ayahuasca</title>
+    <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1>Paraiso Ayahuasca</h1>
+            <p>Reserva Confirmada</p>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <section class="success-message">
+                <div class="success-icon">✅</div>
+                <h2>¡Pago Exitoso!</h2>
+                <p>Tu reserva ha sido confirmada exitosamente.</p>
+                <p>Hemos enviado los detalles de tu reserva a tu correo electrónico.</p>
+                
+                <div class="booking-details">
+                    <h3>Detalles de tu reserva:</h3>
+                    <div id="bookingDetails">
+                        <p>Referencia: <span id="reference"></span></p>
+                        <p>Nombre: <span id="customerName"></span></p>
+                        <p>Email: <span id="customerEmail"></span></p>
+                        <p>Fechas: <span id="bookingDates"></span></p>
+                        <p>Huéspedes: <span id="bookingGuests"></span></p>
+                        <p>Total: <span id="bookingTotal"></span></p>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <a href="/" class="btn-primary">Hacer otra reserva</a>
+                    <button onclick="window.print()" class="btn-secondary">Imprimir confirmación</button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        // Parse URL parameters to show booking details
+        const urlParams = new URLSearchParams(window.location.search);
+        document.getElementById('reference').textContent = urlParams.get('reference') || 'N/A';
+        document.getElementById('customerName').textContent = urlParams.get('name') || 'N/A';
+        document.getElementById('customerEmail').textContent = urlParams.get('email') || 'N/A';
+        document.getElementById('bookingDates').textContent = 
+            `${urlParams.get('checkIn') || 'N/A'} - ${urlParams.get('checkOut') || 'N/A'}`;
+        document.getElementById('bookingGuests').textContent = urlParams.get('guests') || 'N/A';
+        
+        const amount = urlParams.get('amount');
+        document.getElementById('bookingTotal').textContent = amount ? 
+            `$${parseInt(amount).toLocaleString()} COP` : 'N/A';
+    </script>
+</body>
+</html>

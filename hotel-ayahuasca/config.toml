@@ -1,0 +1,37 @@
+baseURL = "https://example.org/"
+languageCode = "es-co"
+title = "Paraiso Ayahuasca"
+theme = "ananke"
+
+[params]
+  description = "Un Paraiso Verde rodeado de selva virgen y comunidades indígenas"
+  featured_image = "/images/hotel-banner.jpg"
+  instagram = "paraisoayahuasca"
+  facebook = "paraisoayahuasca"
+  twitter = "paraisoayahuasca"
+
+  [params.logo]
+    url = "/logo.svg"
+    width = 50
+    height = 50
+    alt = "Paraiso Ayahuasca Logo"
+
+[[menu.main]]
+  name = "Inicio"
+  url = "/"
+  weight = 1
+
+[[menu.main]]
+  name = "Reservas"
+  url = "/reservas/"
+  weight = 2
+
+[[menu.main]]
+  name = "Habitaciones"
+  url = "/habitaciones/"
+  weight = 3
+
+[[menu.main]]
+  name = "Contacto"
+  url = "/contacto/"
+  weight = 4
