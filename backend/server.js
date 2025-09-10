@@ -4,6 +4,7 @@ import fetch from "node-fetch";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import { sendConfirmationEmail } from "./emailService.js";
 
 dotenv.config();
 
@@ -63,8 +64,53 @@ app.get("/health", (req, res) => {
     has_public_key: !!WOMPI_PUBLIC_KEY,
     has_private_key: !!WOMPI_PRIVATE_KEY,
     frontend_url: FRONTEND_URL,
-    environment: process.env.NODE_ENV
+    environment: process.env.NODE_ENV,
+    email_configured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS)
   });
+});
+
+// -------------------- EMAIL CONFIRMATION --------------------
+app.post("/api/send-confirmation-email", async (req, res) => {
+  try {
+    const { reference, name, email, checkIn, checkOut, guests, room, amount } = req.body;
+    
+    const booking = {
+      reference,
+      name,
+      email,
+      checkIn,
+      checkOut,
+      guests,
+      room,
+      amount
+    };
+    
+    const result = await sendConfirmationEmail(booking);
+    
+    if (result.success) {
+      console.log(`✅ Email de confirmación enviado para reserva ${reference}`);
+      res.json({ 
+        ok: true, 
+        message: 'Email enviado exitosamente',
+        messageId: result.messageId 
+      });
+    } else {
+      console.warn(`⚠️ No se pudo enviar email para reserva ${reference}:`, result.error);
+      res.json({ 
+        ok: false, 
+        error: result.error,
+        message: 'Email no enviado (configuración requerida)' 
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Error en /api/send-confirmation-email:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: error.message,
+      message: 'Error interno del servidor' 
+    });
+  }
 });
 
 // -------------------- ROOMS --------------------
@@ -129,7 +175,7 @@ app.post("/api/create-booking", async (req, res) => {
       currency: "COP",
       single_use: true,
       description: `Reserva para ${name} - ${checkIn} a ${checkOut} - ${guests} huésped(es)`,
-      redirect_url: `${FRONTEND_URL}/success.html`,
+      redirect_url: `${FRONTEND_URL}/success.html?reference=${reference}&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}&room=${encodeURIComponent(room)}&amount=${amount}`,
       collect_shipping: false,
     };
 
@@ -228,6 +274,11 @@ app.get("/api/payment-status/:reference", async (req, res) => {
         booking.status = statusMap[paymentData.data.status] || 'pending';
         booking.payment_status = paymentData.data.status;
         booking.payment_data = paymentData.data;
+
+        // Enviar email de confirmación si el pago fue aprobado
+        if (booking.status === 'confirmed') {
+          await sendConfirmationEmail(booking);
+        }
       }
     }
 
@@ -271,9 +322,17 @@ app.listen(PORT, HOST, () => {
   console.log(`🌐 Frontend URL: ${FRONTEND_URL}`);
   console.log(`💳 Wompi Base URL: ${WOMPI_BASE}`);
   console.log(`🔑 Wompi Keys: Public=${!!WOMPI_PUBLIC_KEY}, Private=${!!WOMPI_PRIVATE_KEY}`);
+  console.log(`📧 Email Configurado: ${!!(process.env.EMAIL_USER && process.env.EMAIL_PASS)}`);
   console.log(`🏭 Environment: ${process.env.NODE_ENV}`);
   
   if (!WOMPI_PRIVATE_KEY) {
     console.warn('⚠️  WOMPI_PRIVATE_KEY no está configurada. Las reservas fallarán.');
+  }
+  
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn('⚠️  Credenciales de email no configuradas. Los emails no se enviarán.');
+    console.log('💡 Para configurar email, agregar al .env:');
+    console.log('   EMAIL_USER=tu_email@gmail.com');
+    console.log('   EMAIL_PASS=tu_contraseña_de_aplicacion');
   }
 });

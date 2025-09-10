@@ -3,58 +3,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pago Exitoso - Hotel Ayahuasca</title>
+    <title>Pago Exitoso - Hotel Paraíso Ayahuasca</title>
     <link rel="stylesheet" href="src/styles.css">
+    <style>
+        .success-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .success-icon {
+            font-size: 4rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            color: #28a745;
+        }
+        
+        .booking-details {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .detail-item {
+            padding: 0.5rem;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .detail-item strong {
+            color: #495057;
+            display: block;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+        }
+        
+        .total-amount {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #28a745;
+            text-align: center;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: #d4edda;
+            border-radius: 8px;
+        }
+        
+        .email-confirmation {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            text-align: center;
+            border-left: 4px solid #0c5460;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+        
+        @media (max-width: 768px) {
+            .success-container {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 <body>
     <header class="header">
         <div class="container">
-            <h1>Paraiso Ayahuasca</h1>
+            <h1>Paraíso Ayahuasca</h1>
             <p>Reserva Confirmada</p>
         </div>
     </header>
 
     <main class="main">
         <div class="container">
-            <section class="success-message">
+            <div class="success-container">
                 <div class="success-icon">✅</div>
-                <h2>¡Pago Exitoso!</h2>
-                <p>Tu reserva ha sido confirmada exitosamente.</p>
-                <p>Hemos enviado los detalles de tu reserva a tu correo electrónico.</p>
+                <h2 style="text-align: center; color: #28a745;">¡Pago Exitoso!</h2>
+                <p style="text-align: center; font-size: 1.1rem;">Tu reserva ha sido confirmada exitosamente.</p>
+                
+                <div class="email-confirmation">
+                    <p>📧 Hemos enviado los detalles de tu reserva a tu correo electrónico <strong id="customerEmailDisplay"></strong> 
+                    con copia a amazonaspuertonarino@gmail.com</p>
+                </div>
                 
                 <div class="booking-details">
-                    <h3>Detalles de tu reserva:</h3>
-                    <div id="bookingDetails">
-                        <p>Referencia: <span id="reference"></span></p>
-                        <p>Nombre: <span id="customerName"></span></p>
-                        <p>Email: <span id="customerEmail"></span></p>
-                        <p>Fechas: <span id="bookingDates"></span></p>
-                        <p>Huéspedes: <span id="bookingGuests"></span></p>
-                        <p>Total: <span id="bookingTotal"></span></p>
+                    <h3 style="color: #495057; margin-bottom: 1.5rem;">📋 Detalles de tu reserva:</h3>
+                    
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <strong>Referencia</strong>
+                            <span id="reference"></span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Nombre</strong>
+                            <span id="customerName"></span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Email</strong>
+                            <span id="customerEmail"></span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Check-in</strong>
+                            <span id="checkInDate"></span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Check-out</strong>
+                            <span id="checkOutDate"></span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Noches</strong>
+                            <span id="nightsCount"></span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Huéspedes</strong>
+                            <span id="bookingGuests"></span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Habitación</strong>
+                            <span id="bookingRoom"></span>
+                        </div>
                     </div>
+                    
+                    <div class="total-amount" id="bookingTotal"></div>
                 </div>
 
                 <div class="actions">
                     <a href="/" class="btn-primary">Hacer otra reserva</a>
                     <button onclick="window.print()" class="btn-secondary">Imprimir confirmación</button>
+                    <a href="mailto:amazonaspuertonarino@gmail.com?subject=Consulta Reserva %23<span id='emailReference'></span>" class="btn-secondary">Contactar soporte</a>
                 </div>
-            </section>
+            </div>
         </div>
     </main>
 
     <script>
-        // Parse URL parameters to show booking details
+        // Parse URL parameters and display booking details
         const urlParams = new URLSearchParams(window.location.search);
-        document.getElementById('reference').textContent = urlParams.get('reference') || 'N/A';
-        document.getElementById('customerName').textContent = urlParams.get('name') || 'N/A';
-        document.getElementById('customerEmail').textContent = urlParams.get('email') || 'N/A';
-        document.getElementById('bookingDates').textContent = 
-            `${urlParams.get('checkIn') || 'N/A'} - ${urlParams.get('checkOut') || 'N/A'}`;
-        document.getElementById('bookingGuests').textContent = urlParams.get('guests') || 'N/A';
         
+        const reference = urlParams.get('reference') || 'N/A';
+        const name = urlParams.get('name') || 'N/A';
+        const email = urlParams.get('email') || 'N/A';
+        const checkIn = urlParams.get('checkIn');
+        const checkOut = urlParams.get('checkOut');
+        const guests = urlParams.get('guests') || 'N/A';
+        const room = urlParams.get('room') || 'N/A';
         const amount = urlParams.get('amount');
-        document.getElementById('bookingTotal').textContent = amount ? 
-            `$${parseInt(amount).toLocaleString()} COP` : 'N/A';
+        
+        // Calculate nights
+        let nights = 0;
+        if (checkIn && checkOut) {
+            const checkInDate = new Date(checkIn);
+            const checkOutDate = new Date(checkOut);
+            nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+        }
+        
+        // Format dates
+        const formatDate = (dateString) => {
+            if (!dateString) return 'N/A';
+            return new Date(dateString).toLocaleDateString('es-ES', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        };
+        
+        // Display all information
+        document.getElementById('reference').textContent = reference;
+        document.getElementById('customerName').textContent = name;
+        document.getElementById('customerEmail').textContent = email;
+        document.getElementById('customerEmailDisplay').textContent = email;
+        document.getElementById('checkInDate').textContent = formatDate(checkIn);
+        document.getElementById('checkOutDate').textContent = formatDate(checkOut);
+        document.getElementById('nightsCount').textContent = nights;
+        document.getElementById('bookingGuests').textContent = guests;
+        document.getElementById('bookingRoom').textContent = room;
+        document.getElementById('emailReference').textContent = reference;
+        
+        if (amount) {
+            document.getElementById('bookingTotal').textContent = 
+                `Total: $${parseInt(amount).toLocaleString()} COP`;
+        } else {
+            document.getElementById('bookingTotal').textContent = 'Total: N/A';
+        }
+        
+        // Send confirmation email via backend
+        fetch('/api/send-confirmation-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                reference,
+                name,
+                email,
+                checkIn,
+                checkOut,
+                guests,
+                room,
+                amount
+            })
+        }).catch(error => {
+            console.log('Email confirmation request sent (errors are handled server-side)');
+        });
     </script>
 </body>
 </html>
