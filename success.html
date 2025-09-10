@@ -80,6 +80,16 @@
             margin-top: 2rem;
         }
         
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            text-align: center;
+            border-left: 4px solid #dc3545;
+        }
+        
         @media (max-width: 768px) {
             .success-container {
                 margin: 1rem;
@@ -105,10 +115,100 @@
             <div class="success-container">
                 <div class="success-icon">✅</div>
                 <h2 style="text-align: center; color: #28a745;">¡Pago Exitoso!</h2>
+                
+                <div id="bookingInfo">
+                    <!-- Booking information will be populated here -->
+                </div>
+
+                <div class="actions">
+                    <a href="/" class="btn-primary">Hacer otra reserva</a>
+                    <button onclick="window.print()" class="btn-secondary">Imprimir confirmación</button>
+                    <a href="mailto:amazonaspuertonarino@gmail.com" class="btn-secondary">Contactar soporte</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Parse URL parameters and display booking details
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            const result = {};
+            
+            for (const [key, value] of params) {
+                result[key] = decodeURIComponent(value);
+            }
+            
+            return result;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString || dateString === 'N/A') return 'N/A';
+            
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return dateString;
+                
+                return date.toLocaleDateString('es-ES', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            } catch (error) {
+                console.error('Error formatting date:', error);
+                return dateString;
+            }
+        }
+
+        function calculateNights(checkIn, checkOut) {
+            if (!checkIn || !checkOut || checkIn === 'N/A' || checkOut === 'N/A') return 0;
+            
+            try {
+                const checkInDate = new Date(checkIn);
+                const checkOutDate = new Date(checkOut);
+                
+                if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) return 0;
+                
+                const diffTime = Math.abs(checkOutDate - checkInDate);
+                return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            } catch (error) {
+                console.error('Error calculating nights:', error);
+                return 0;
+            }
+        }
+
+        function displayBookingInfo(params) {
+            const bookingInfoDiv = document.getElementById('bookingInfo');
+            
+            if (!params || Object.keys(params).length === 0) {
+                bookingInfoDiv.innerHTML = `
+                    <div class="error-message">
+                        <h3>⚠️ Información no disponible</h3>
+                        <p>No se encontraron datos de reserva en la URL.</p>
+                        <p>Por favor contacta al soporte con tu referencia de reserva.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const reference = params.reference || 'N/A';
+            const name = params.name || 'N/A';
+            const email = params.email || 'N/A';
+            const checkIn = params.checkIn;
+            const checkOut = params.checkOut;
+            const guests = params.guests || 'N/A';
+            const room = params.room || 'N/A';
+            const amount = params.amount;
+            
+            const nights = calculateNights(checkIn, checkOut);
+            const formattedAmount = amount ? `$${parseInt(amount).toLocaleString()} COP` : 'N/A';
+
+            bookingInfoDiv.innerHTML = `
                 <p style="text-align: center; font-size: 1.1rem;">Tu reserva ha sido confirmada exitosamente.</p>
                 
                 <div class="email-confirmation">
-                    <p>📧 Hemos enviado los detalles de tu reserva a tu correo electrónico <strong id="customerEmailDisplay"></strong> 
+                    <p>📧 Hemos enviado los detalles de tu reserva a tu correo electrónico <strong>${email}</strong> 
                     con copia a amazonaspuertonarino@gmail.com</p>
                 </div>
                 
@@ -118,117 +218,63 @@
                     <div class="detail-grid">
                         <div class="detail-item">
                             <strong>Referencia</strong>
-                            <span id="reference"></span>
+                            <span>${reference}</span>
                         </div>
                         <div class="detail-item">
                             <strong>Nombre</strong>
-                            <span id="customerName"></span>
+                            <span>${name}</span>
                         </div>
                         <div class="detail-item">
                             <strong>Email</strong>
-                            <span id="customerEmail"></span>
+                            <span>${email}</span>
                         </div>
                         <div class="detail-item">
                             <strong>Check-in</strong>
-                            <span id="checkInDate"></span>
+                            <span>${formatDate(checkIn)}</span>
                         </div>
                         <div class="detail-item">
                             <strong>Check-out</strong>
-                            <span id="checkOutDate"></span>
+                            <span>${formatDate(checkOut)}</span>
                         </div>
                         <div class="detail-item">
                             <strong>Noches</strong>
-                            <span id="nightsCount"></span>
+                            <span>${nights}</span>
                         </div>
                         <div class="detail-item">
                             <strong>Huéspedes</strong>
-                            <span id="bookingGuests"></span>
+                            <span>${guests}</span>
                         </div>
                         <div class="detail-item">
                             <strong>Habitación</strong>
-                            <span id="bookingRoom"></span>
+                            <span>${room}</span>
                         </div>
                     </div>
                     
-                    <div class="total-amount" id="bookingTotal"></div>
+                    <div class="total-amount">Total: ${formattedAmount}</div>
                 </div>
+            `;
 
-                <div class="actions">
-                    <a href="/" class="btn-primary">Hacer otra reserva</a>
-                    <button onclick="window.print()" class="btn-secondary">Imprimir confirmación</button>
-                    <a href="mailto:amazonaspuertonarino@gmail.com?subject=Consulta Reserva %23<span id='emailReference'></span>" class="btn-secondary">Contactar soporte</a>
-                </div>
-            </div>
-        </div>
-    </main>
+            // Update contact email link with reference
+            const contactLink = document.querySelector('a[href^="mailto:"]');
+            if (contactLink && reference !== 'N/A') {
+                contactLink.href = `mailto:amazonaspuertonarino@gmail.com?subject=Consulta Reserva %23${reference}`;
+            }
+        }
 
-    <script>
-        // Parse URL parameters and display booking details
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        const reference = urlParams.get('reference') || 'N/A';
-        const name = urlParams.get('name') || 'N/A';
-        const email = urlParams.get('email') || 'N/A';
-        const checkIn = urlParams.get('checkIn');
-        const checkOut = urlParams.get('checkOut');
-        const guests = urlParams.get('guests') || 'N/A';
-        const room = urlParams.get('room') || 'N/A';
-        const amount = urlParams.get('amount');
-        
-        // Calculate nights
-        let nights = 0;
-        if (checkIn && checkOut) {
-            const checkInDate = new Date(checkIn);
-            const checkOutDate = new Date(checkOut);
-            nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
-        }
-        
-        // Format dates
-        const formatDate = (dateString) => {
-            if (!dateString) return 'N/A';
-            return new Date(dateString).toLocaleDateString('es-ES', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-        };
-        
-        // Display all information
-        document.getElementById('reference').textContent = reference;
-        document.getElementById('customerName').textContent = name;
-        document.getElementById('customerEmail').textContent = email;
-        document.getElementById('customerEmailDisplay').textContent = email;
-        document.getElementById('checkInDate').textContent = formatDate(checkIn);
-        document.getElementById('checkOutDate').textContent = formatDate(checkOut);
-        document.getElementById('nightsCount').textContent = nights;
-        document.getElementById('bookingGuests').textContent = guests;
-        document.getElementById('bookingRoom').textContent = room;
-        document.getElementById('emailReference').textContent = reference;
-        
-        if (amount) {
-            document.getElementById('bookingTotal').textContent = 
-                `Total: $${parseInt(amount).toLocaleString()} COP`;
-        } else {
-            document.getElementById('bookingTotal').textContent = 'Total: N/A';
-        }
-        
+        // Debug: Log all URL parameters
+        const urlParams = getUrlParams();
+        console.log('URL Parameters:', urlParams);
+
+        // Display booking information
+        displayBookingInfo(urlParams);
+
         // Send confirmation email via backend
         fetch('/api/send-confirmation-email', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                reference,
-                name,
-                email,
-                checkIn,
-                checkOut,
-                guests,
-                room,
-                amount
-            })
+            body: JSON.stringify(urlParams)
         }).catch(error => {
             console.log('Email confirmation request sent (errors are handled server-side)');
         });
