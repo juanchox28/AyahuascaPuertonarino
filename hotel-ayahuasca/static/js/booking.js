@@ -7,6 +7,7 @@ class HotelBookingApp {
         this.checkInDate = null;
         this.checkOutDate = null;
         this.nights = 0;
+        this.backendUrl = 'https://ayahuascapuertonarino.onrender.com';
         this.init();
     }
 
@@ -19,7 +20,7 @@ class HotelBookingApp {
 
     async checkBackendHealth() {
         try {
-            const response = await fetch('http://localhost:3000/health');
+            const response = await fetch(`${this.backendUrl}/health`);
             const health = await response.json();
             console.log('Backend health:', health);
             
@@ -33,6 +34,10 @@ class HotelBookingApp {
 
     async loadRooms() {
         try {
+            const response = await fetch(`${this.backendUrl}/api/rooms`);
+            this.rooms = await response.json();
+        } catch (error) {
+            console.error('Error loading rooms from backend, using fallback:', error);
             this.rooms = [
                 {
                     id: 'dormitorio',
@@ -91,8 +96,6 @@ class HotelBookingApp {
                     description: 'Suite con dos camas sencillas'
                 }
             ];
-        } catch (error) {
-            console.error('Error loading rooms:', error);
         }
     }
 
@@ -393,7 +396,7 @@ class HotelBookingApp {
         };
 
         try {
-            const response = await fetch('http://localhost:3000/api/create-booking', {
+            const response = await fetch(`${this.backendUrl}/api/create-booking`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

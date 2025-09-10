@@ -8,8 +8,9 @@ import { fileURLToPath } from "url";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 const HOST = process.env.HOST || "0.0.0.0";
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,8 +19,27 @@ const WOMPI_BASE = process.env.WOMPI_BASE || "https://sandbox.wompi.co/v1";
 const WOMPI_PUBLIC_KEY = process.env.WOMPI_PUBLIC_KEY;
 const WOMPI_PRIVATE_KEY = process.env.WOMPI_PRIVATE_KEY;
 
-app.use(cors());
-app.use(express.json());
+// CORS configuration for production
+const corsOptions = {
+  origin: [
+    FRONTEND_URL,
+    "http://localhost:5173",
+    "http://localhost:3000"
+  ],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
 
 // Servir archivos estáticos del frontend
 app.use(express.static(path.join(__dirname, '..')));
@@ -41,7 +61,9 @@ app.get("/health", (req, res) => {
     port: PORT, 
     wompi_base: WOMPI_BASE,
     has_public_key: !!WOMPI_PUBLIC_KEY,
-    has_private_key: !!WOMPI_PRIVATE_KEY
+    has_private_key: !!WOMPI_PRIVATE_KEY,
+    frontend_url: FRONTEND_URL,
+    environment: process.env.NODE_ENV
   });
 });
 
@@ -103,11 +125,11 @@ app.post("/api/create-booking", async (req, res) => {
     // -------------------- WOMPI CALL --------------------
     const payload = {
       name: `Reserva Hotel Paraiso Ayahuasca - ${reference}`,
-      amount_in_cents: Math.round(amount * 100), // Ensure integer
+      amount_in_cents: Math.round(amount * 100),
       currency: "COP",
       single_use: true,
       description: `Reserva para ${name} - ${checkIn} a ${checkOut} - ${guests} huésped(es)`,
-      redirect_url: "http://localhost:5173/success.html",
+      redirect_url: `${FRONTEND_URL}/success.html`,
       collect_shipping: false,
     };
 
@@ -126,7 +148,6 @@ app.post("/api/create-booking", async (req, res) => {
     console.log("📡 Wompi response:", wompiData);
 
     if (wompiData.data && wompiData.data.id) {
-      // Update booking with payment info
       const updatedBooking = {
         ...booking,
         wompi_payment_id: wompiData.data.id,
@@ -134,7 +155,6 @@ app.post("/api/create-booking", async (req, res) => {
         status: "payment_pending"
       };
       
-      // Update the booking in memory
       const bookingIndex = bookings.findIndex(b => b.reference === reference);
       if (bookingIndex !== -1) {
         bookings[bookingIndex] = updatedBooking;
@@ -149,7 +169,6 @@ app.post("/api/create-booking", async (req, res) => {
     } else {
       console.error("❌ Error en respuesta de Wompi:", wompiData);
       
-      // Update booking status to failed
       const updatedBooking = {
         ...booking,
         status: "payment_failed",
@@ -198,7 +217,6 @@ app.get("/api/payment-status/:reference", async (req, res) => {
       const paymentData = await paymentRes.json();
       
       if (paymentData.data) {
-        // Update booking status based on payment status
         const statusMap = {
           'APPROVED': 'confirmed',
           'DECLINED': 'cancelled',
@@ -230,14 +248,30 @@ app.get('/success.html', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'success.html'));
 });
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ 
+    ok: false, 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message
+  });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ ok: false, error: 'Route not found' });
+});
+
 // -------------------- SERVER START --------------------
 app.listen(PORT, HOST, () => {
   console.log(`✅ Backend corriendo en http://${HOST}:${PORT}`);
   console.log(`📊 ${rooms.length} habitaciones cargadas`);
   console.log(`📋 ${bookings.length} reservas en memoria`);
-  console.log(`🌐 Frontend disponible en http://${HOST}:${PORT}`);
+  console.log(`🌐 Frontend URL: ${FRONTEND_URL}`);
   console.log(`💳 Wompi Base URL: ${WOMPI_BASE}`);
   console.log(`🔑 Wompi Keys: Public=${!!WOMPI_PUBLIC_KEY}, Private=${!!WOMPI_PRIVATE_KEY}`);
+  console.log(`🏭 Environment: ${process.env.NODE_ENV}`);
   
   if (!WOMPI_PRIVATE_KEY) {
     console.warn('⚠️  WOMPI_PRIVATE_KEY no está configurada. Las reservas fallarán.');
