@@ -42,7 +42,7 @@ app.use((req, res, next) => {
 });
 
 // Servir archivos estáticos del frontend
-app.use(express.static(path.join(__dirname, '..')));
+app.use(express.static(path.join(__dirname, '..', 'dist')));
 
 // -------------------- IN-MEMORY DATABASE --------------------
 let bookings = [];
@@ -240,12 +240,12 @@ app.get("/api/payment-status/:reference", async (req, res) => {
 
 // Ruta principal para servir index.html
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'index.html'));
+  res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
 });
 
 // Ruta de éxito para redirección de Wompi
 app.get('/success.html', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'success.html'));
+  res.sendFile(path.join(__dirname, '..', 'dist', 'success.html'));
 });
 
 // Error handling middleware

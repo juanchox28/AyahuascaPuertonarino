@@ -19,7 +19,7 @@ class HotelBookingApp {
 
     async checkBackendHealth() {
         try {
-            const response = await fetch('http://localhost:3000/health');
+            const response = await fetch('/health');
             const health = await response.json();
             console.log('Backend health:', health);
             
@@ -412,7 +412,7 @@ class HotelBookingApp {
         };
 
         try {
-            const response = await fetch('http://localhost:3000/api/create-booking', {
+            const response = await fetch('/api/create-booking', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

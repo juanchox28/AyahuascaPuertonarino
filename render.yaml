@@ -3,7 +3,7 @@ services:
     name: ayahuasca-backend
     env: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm install && npm run build
     startCommand: npm run backend
     envVars:
       - key: NODE_ENV
