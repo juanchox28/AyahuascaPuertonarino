@@ -9,9 +9,9 @@ import { sendConfirmationEmail } from "./emailService.js";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 8080;
 const HOST = process.env.HOST || "0.0.0.0";
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://ayahuascapuertonarino.fly.dev";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,6 +24,7 @@ const WOMPI_PRIVATE_KEY = process.env.WOMPI_PRIVATE_KEY;
 const corsOptions = {
   origin: [
     FRONTEND_URL,
+    "https://ayahuascapuertonarino.fly.dev",
     "http://localhost:5173",
     "http://localhost:3000"
   ],
@@ -65,7 +66,10 @@ app.get("/health", (req, res) => {
     has_private_key: !!WOMPI_PRIVATE_KEY,
     frontend_url: FRONTEND_URL,
     environment: process.env.NODE_ENV,
-    email_configured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS)
+    email_configured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS),
+    deployment: "fly.io",
+    hostname: "ayahuascapuertonarino.fly.dev",
+    ip_address: "66.241.124.104"
   });
 });
 
@@ -324,6 +328,8 @@ app.listen(PORT, HOST, () => {
   console.log(`🔑 Wompi Keys: Public=${!!WOMPI_PUBLIC_KEY}, Private=${!!WOMPI_PRIVATE_KEY}`);
   console.log(`📧 Email Configurado: ${!!(process.env.EMAIL_USER && process.env.EMAIL_PASS)}`);
   console.log(`🏭 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🚀 Deployment: Fly.io (ayahuascapuertonarino.fly.dev)`);
+  console.log(`🌍 IP Address: 66.241.124.104`);
   
   if (!WOMPI_PRIVATE_KEY) {
     console.warn('⚠️  WOMPI_PRIVATE_KEY no está configurada. Las reservas fallarán.');
