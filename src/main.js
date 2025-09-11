@@ -8,7 +8,7 @@ class HotelBookingApp {
         this.checkOutDate = null;
         this.nights = 0;
         this.baseURL = window.location.origin;
-			this.baseURL = import.meta.env.PROD ? 'https://ayahuascapuertonarino.onrender.com' : '';
+			this.baseURL = import.meta.env.PROD ? 'https://ayahuascapuertonarino.fly.dev' : '';
        
         this.init();
     }
