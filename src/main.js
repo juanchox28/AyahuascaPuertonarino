@@ -93,6 +93,8 @@ class HotelBookingApp {
                     description: 'Suite con dos camas sencillas'
                 }
             ];
+        } catch (error) {
+            console.error('Error loading rooms:', error);
         }
     }
 
