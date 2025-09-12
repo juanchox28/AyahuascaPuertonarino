@@ -35,22 +35,6 @@ class HotelBookingApp {
 
     async loadRooms() {
         try {
-            const response = await fetch(`${this.baseURL}/api/rooms`);
-            if (!response.ok) {
-                throw new Error(`Error en la respuesta de la API: ${response.status}`);
-            }
-            const apiRooms = await response.json();
-
-            // Validar que las habitaciones de la API tienen la estructura esperada
-            if (Array.isArray(apiRooms) && apiRooms.length > 0 && apiRooms[0].id && apiRooms[0].name) {
-                this.rooms = apiRooms;
-                console.log('Habitaciones cargadas desde la API.');
-            } else {
-                throw new Error('Los datos de la API de habitaciones no son válidos.');
-            }
-        } catch (error) {
-            console.error('Error al cargar habitaciones desde la API, usando datos de respaldo:', error);
-            // Datos de respaldo si la API falla o no devuelve datos válidos
             this.rooms = [
                 {
                     id: 'dormitorio',
