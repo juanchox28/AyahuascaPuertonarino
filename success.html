@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pago Exitoso - Hotel Paraíso Ayahuasca</title>
+    <link rel="stylesheet" href="src/styles.css">
+    <style>
+        .success-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .success-icon {
+            font-size: 4rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            color: #28a745;
+        }
+        
+        .booking-details {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .detail-item {
+            padding: 0.5rem;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .detail-item strong {
+            color: #495057;
+            display: block;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+        }
+        
+        .total-amount {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #28a745;
+            text-align: center;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: #d4edda;
+            border-radius: 8px;
+        }
+        
+        .email-confirmation {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            text-align: center;
+            border-left: 4px solid #0c5460;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            text-align: center;
+            border-left: 4px solid #dc3545;
+        }
+        
+        @media (max-width: 768px) {
+            .success-container {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1>Paraíso Ayahuasca</h1>
+            <p>Reserva Confirmada</p>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div class="success-container">
+                <div class="success-icon">✅</div>
+                <h2 style="text-align: center; color: #28a745;">¡Pago Exitoso!</h2>
+                
+                <div id="bookingInfo">
+                    <!-- Booking information will be populated here -->
+                </div>
+
+                <div class="actions">
+                    <a href="/" class="btn-primary">Hacer otra reserva</a>
+                    <button onclick="window.print()" class="btn-secondary">Imprimir confirmación</button>
+                    <a href="mailto:amazonaspuertonarino@gmail.com" class="btn-secondary">Contactar soporte</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Parse URL parameters and display booking details
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            const result = {};
+            
+            for (const [key, value] of params) {
+                result[key] = decodeURIComponent(value);
+            }
+            
+            return result;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString || dateString === 'N/A') return 'N/A';
+            
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return dateString;
+                
+                return date.toLocaleDateString('es-ES', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            } catch (error) {
+                console.error('Error formatting date:', error);
+                return dateString;
+            }
+        }
+
+        function calculateNights(checkIn, checkOut) {
+            if (!checkIn || !checkOut || checkIn === 'N/A' || checkOut === 'N/A') return 0;
+            
+            try {
+                const checkInDate = new Date(checkIn);
+                const checkOutDate = new Date(checkOut);
+                
+                if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) return 0;
+                
+                const diffTime = Math.abs(checkOutDate - checkInDate);
+                return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            } catch (error) {
+                console.error('Error calculating nights:', error);
+                return 0;
+            }
+        }
+
+        function displayBookingInfo(params) {
+            const bookingInfoDiv = document.getElementById('bookingInfo');
+            
+            if (!params || Object.keys(params).length === 0) {
+                bookingInfoDiv.innerHTML = `
+                    <div class="error-message">
+                        <h3>⚠️ Información no disponible</h3>
+                        <p>No se encontraron datos de reserva en la URL.</p>
+                        <p>Por favor contacta al soporte con tu referencia de reserva.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const reference = params.reference || 'N/A';
+            const name = params.name || 'N/A';
+            const email = params.email || 'N/A';
+            const checkIn = params.checkIn;
+            const checkOut = params.checkOut;
+            const guests = params.guests || 'N/A';
+            const room = params.room || 'N/A';
+            const amount = params.amount;
+            
+            const nights = calculateNights(checkIn, checkOut);
+            const formattedAmount = amount ? `$${parseInt(amount).toLocaleString()} COP` : 'N/A';
+
+            bookingInfoDiv.innerHTML = `
+                <p style="text-align: center; font-size: 1.1rem;">Tu reserva ha sido confirmada exitosamente.</p>
+                
+                <div class="email-confirmation">
+                    <p>📧 Hemos enviado los detalles de tu reserva a tu correo electrónico <strong>${email}</strong> 
+                    con copia a amazonaspuertonarino@gmail.com</p>
+                </div>
+                
+                <div class="booking-details">
+                    <h3 style="color: #495057; margin-bottom: 1.5rem;">📋 Detalles de tu reserva:</h3>
+                    
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <strong>Referencia</strong>
+                            <span>${reference}</span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Nombre</strong>
+                            <span>${name}</span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Email</strong>
+                            <span>${email}</span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Check-in</strong>
+                            <span>${formatDate(checkIn)}</span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Check-out</strong>
+                            <span>${formatDate(checkOut)}</span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Noches</strong>
+                            <span>${nights}</span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Huéspedes</strong>
+                            <span>${guests}</span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Habitación</strong>
+                            <span>${room}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="total-amount">Total: ${formattedAmount}</div>
+                </div>
+            `;
+
+            // Update contact email link with reference
+            const contactLink = document.querySelector('a[href^="mailto:"]');
+            if (contactLink && reference !== 'N/A') {
+                contactLink.href = `mailto:amazonaspuertonarino@gmail.com?subject=Consulta Reserva %23${reference}`;
+            }
+        }
+
+        // Debug: Log all URL parameters
+        const urlParams = getUrlParams();
+        console.log('URL Parameters:', urlParams);
+
+        // Display booking information
+        displayBookingInfo(urlParams);
+
+        // Send confirmation email via backend
+        fetch('/api/send-confirmation-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(urlParams)
+        }).catch(error => {
+            console.log('Email confirmation request sent (errors are handled server-side)');
+        });
+    </script>
+</body>
+</html>

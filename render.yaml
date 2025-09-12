@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: ayahuasca-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: WOMPI_BASE
+        value: https://sandbox.wompi.co/v1
+      - key: WOMPI_PUBLIC_KEY
+        fromSecret: WOMPI_PUBLIC_KEY
+      - key: WOMPI_PRIVATE_KEY
+        fromSecret: WOMPI_PRIVATE_KEY
+      - key: FRONTEND_URL
+        value: https://ayahuascapuertonarino.onrender.com
