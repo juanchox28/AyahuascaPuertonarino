@@ -26,7 +26,8 @@ const corsOptions = {
     FRONTEND_URL,
     "https://ayahuascapuertonarino.fly.dev",
     "http://localhost:5173",
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "http://127.0.0.1:5500"
   ],
   credentials: true
 };
@@ -57,10 +58,11 @@ let rooms = [
 
 // -------------------- HEALTH --------------------
 app.get("/health", (req, res) => {
-  res.json({ 
-    ok: true, 
-    host: HOST, 
-    port: PORT, 
+  console.log(`🔍 Health check from ${req.ip} at ${new Date().toISOString()}`);
+  res.json({
+    ok: true,
+    host: HOST,
+    port: PORT,
     wompi_base: WOMPI_BASE,
     has_public_key: !!WOMPI_PUBLIC_KEY,
     has_private_key: !!WOMPI_PRIVATE_KEY,
@@ -119,6 +121,7 @@ app.post("/api/send-confirmation-email", async (req, res) => {
 
 // -------------------- ROOMS --------------------
 app.get("/api/rooms", (req, res) => {
+  console.log(`🏨 Rooms request from ${req.ip} at ${new Date().toISOString()}`);
   res.json(rooms);
 });
 
@@ -137,16 +140,21 @@ app.post("/api/update-room", (req, res) => {
 
 // -------------------- BOOKINGS --------------------
 app.get("/api/bookings", (req, res) => {
+  console.log(`📋 Bookings request from ${req.ip} at ${new Date().toISOString()}`);
   res.json(bookings.sort((a, b) => new Date(b.created) - new Date(a.created)));
 });
 
 app.post("/api/create-booking", async (req, res) => {
+  console.log(`📝 Create booking request from ${req.ip} at ${new Date().toISOString()}`);
+  console.log('Request body:', req.body);
+
   try {
     const { name, email, amount, checkIn, checkOut, guests, room } = req.body;
-    
+
     if (!WOMPI_PRIVATE_KEY) {
-      return res.status(500).json({ 
-        ok: false, 
+      console.error('❌ WOMPI_PRIVATE_KEY not configured');
+      return res.status(500).json({
+        ok: false,
         error: "Wompi private key not configured",
         message: "Please set WOMPI_PRIVATE_KEY in .env file"
       });
